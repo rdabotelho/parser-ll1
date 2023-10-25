@@ -13,5 +13,6 @@ class Client:
 if __name__ == "__main__":
     client = Client('Raimundo', 'Botelho', 43)
     session = Session(client)
+    
     result = Parser(session, False).execute("client.first_name.concate(' ').concate(client.last_name).replace(' ', '-').upper()")
     print(result)

@@ -58,12 +58,6 @@ class Parser:
         return None
 
     '''
-    <expr>          -> <term> | <term> + <expr> | <term> - <expr>
-    <term>          -> <factor> | <factor> * <term> | <factor> / <term>
-    <factor>        -> <integer> | (<expr>)
-    <logical_expr>  -> <comp_expr> | <logical_expr> AND <logical_expr> | <logical_expr> OR <logical_expr> | NOT <logical_expr>
-    <comp_expr>     -> <expr> == <expr> | <expr> != <expr> | <expr> < <expr> | <expr> > <expr> | <expr> <= <expr> | <expr> >= <expr>
-
     EXPRESSION  -> <TERM> + <EXPRESSION> | <TERM> - <EXPRESSION> | <TERM>
     TERM        -> <FACTOR> * <TERM> | <FACTOR> / <TERM> | <FACTOR>
     FACTOR      -> <VARIABLE> | <LITERAL> | ( <EXPRESSION> )
