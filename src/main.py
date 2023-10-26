@@ -11,8 +11,8 @@ class Client:
         self.age = age
 
 if __name__ == "__main__":
-    client = Client('Raimundo', 'Botelho', 43)
+    client = Client('Rafael', 'Botelho', 16)
     session = Session(client)
     
-    result = Parser(session, False).execute("client.first_name.concate(' ').concate(client.last_name).replace(' ', '-').upper()")
+    result = Parser(session, False).execute("client.first_name")
     print(result)

@@ -16,7 +16,7 @@ token_regex = {
     TokenType.ID: r'^[a-zA-Z][a-zA-Z0-9_]*',
     TokenType.DELIMITER: r'^[\(\)\,\.]',
     TokenType.ARIT_OPERATOR: r'^[\+\-\*\/]',
-    TokenType.COMP_OPERATOR: r'^[\=\>\<\!]',
+    TokenType.COMP_OPERATOR: r'^(==|!=|<=|>=|<|>)',
     TokenType.STRING: r'^\'(.*?)\'',
     TokenType.NUMBER: r'^\d+(\.\d+)?',
     TokenType.SPACE: r'^\s'

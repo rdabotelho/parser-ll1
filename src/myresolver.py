@@ -2,6 +2,10 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from myexceptions import *
 from mynode import Node
+import re
+
+PATTERN_INTEGER = r'^[+-]?\d+$'
+PATTERN_FLOAT = r'^[+-]?\d+(\.\d+)?$'
 
 class ResolverType(Enum):
     PROPERTY = 0,
@@ -70,7 +74,17 @@ class LiteralResolver(Resolver):
         return None
             
     def eval(self, node: Node, object: any) -> any:
-        return node.token.value.replace("'", "")
+        result = node.token.value.replace("'", "")
+        if re.fullmatch(PATTERN_INTEGER, result) is not None:
+            return int(result)
+        elif re.fullmatch(PATTERN_FLOAT, result) is not None:
+            return float(result)
+        elif result == 'true':
+            return True
+        elif result == 'false':
+            return False
+        else:
+            return result
 
 class OperatorResolver(Resolver):
     type = ResolverType.OPERATOR
@@ -87,13 +101,25 @@ class OperatorResolver(Resolver):
         right = node.children[1].eval(object)
         result = 0
         if oper == '+':
-            result = float(left) + float(right)
+            result = left + right
         elif oper == '-':
-            result = float(left) - float(right)
+            result = left - right
         elif oper == '*':
-            result = float(left) * float(right)
-        else:
-            result = float(left) / float(right)
+            result = left * right
+        elif oper == '/':
+            result = left / right
+        elif oper == '==':
+            return left == right
+        elif oper == '!=':
+            return left != right
+        elif oper == '>':
+            return left > right
+        elif oper == '<':
+            return left < right
+        elif oper == '>=':
+            return left >= right
+        elif oper == '<=':
+            return left <= right
         if (self.has_decimal(result)):
             return result
         else:

@@ -58,7 +58,15 @@ class Parser:
         return None
 
     '''
-    EXPRESSION  -> <TERM> + <EXPRESSION> | <TERM> - <EXPRESSION> | <TERM>
+    1 + 2 > 2 + 2
+    (1 + 1 == 2) == true
+
+    EXPRESSION  -> <COMP_EXPR> | <ARIT_EXPRE>
+    LOGIC_EXPR  -> <COMP_EXPR> and <LOGIC_EXPR> | <COMP_EXPR> or <LOGIC_EXPR> | not <LOGIC_EXPR> | ( LOGIC_EXPR ) | <COMP_EXPR>
+
+    COMP_EXPR   -> <ARIT_EXPRE> == <EXPRESSION> | <ARIT_EXPRE> != <EXPRESSION> | <ARIT_EXPRE> < <EXPRESSION> | 
+                   <ARIT_EXPRE> > <EXPRESSION> | <ARIT_EXPRE> <= <EXPRESSION> | <ARIT_EXPRE> >= <EXPRESSION>
+    ARIT_EXPRE  -> <TERM> + <ARIT_EXPRE> | <TERM> - <ARIT_EXPRE> | <TERM>
     TERM        -> <FACTOR> * <TERM> | <FACTOR> / <TERM> | <FACTOR>
     FACTOR      -> <VARIABLE> | <LITERAL> | ( <EXPRESSION> )
     VARIABLE    -> <IDENTIFIER> . <VARIABLE> | <IDENTIFIER>    
@@ -70,21 +78,80 @@ class Parser:
     BOOL        -> true | false    
     '''
 
-    def expression(self, parent: Node) -> bool:
+    def expression(self, parent: Node) -> bool:        
+        start = self.pos
+        result = (
+            ((self.comp_expr(parent) and self.end(1)) or self.reset(start))
+        )
+        return result
+    
+    def logic_expr(self, parent: Node) -> bool:
         start = self.pos
         node_left = self.create_node(Token(TokenType.NONE, 'LEFT', start))
         node_oper = self.create_node(Token(TokenType.NONE, 'OPER', start), resolvers[ResolverType.OPERATOR])
         node_right = self.create_node(Token(TokenType.NONE, 'RIGHT', start))
         result = (
-            ((self.term(node_left) and self.terminator(TokenType.ARIT_OPERATOR, '+', node_oper) and self.expression(node_right) and self.end(1)) or self.reset(start)) or
-            ((self.term(node_left) and self.terminator(TokenType.ARIT_OPERATOR, '-', node_oper) and self.expression(node_right) and self.end(2)) or self.reset(start)) or
+            ((self.comp_expr(node_left) and self.terminator(TokenType.RESERVED, 'and', node_oper) and self.logic_expr(node_right) and self.end(1)) or self.reset(start)) or
+            ((self.comp_expr(node_left) and self.terminator(TokenType.RESERVED, 'or', node_oper) and self.logic_expr(node_right) and self.end(2)) or self.reset(start)) or
+            ((self.terminator(TokenType.RESERVED, 'not', node_oper) and self.logic_expr(node_left) and self.end(3)) or self.reset(start)) or
+            ((self.terminator(TokenType.DELIMITER, '(') and self.logic_expr(node_left) and self.terminator(TokenType.DELIMITER, ')') and self.end(4)) or self.reset(start)) or
+            ((self.comp_expr(node_left) and self.end(5)) or self.reset(start))
+        )
+        if result:
+            if self.prod == 1 or self.prod == 2:
+                node_oper.clear_children()
+                node_oper.add_child(node_left)
+                node_oper.add_child(node_right)
+                parent.clear_children()
+                parent.add_child(node_oper)
+            elif self.prod == 3:
+                node_oper.clear_children()
+                node_oper.add_child(node_left)
+                parent.clear_children()
+                parent.add_child(node_oper)
+            else:
+                parent.copy(node_left)
+        return result
+
+    def comp_expr(self, parent: Node) -> bool:
+        start = self.pos
+        node_left = self.create_node(Token(TokenType.NONE, 'LEFT', start))
+        node_oper = self.create_node(Token(TokenType.NONE, 'OPER', start), resolvers[ResolverType.OPERATOR])
+        node_right = self.create_node(Token(TokenType.NONE, 'RIGHT', start))
+        result = (
+            ((self.arit_expr(node_left) and self.terminator(TokenType.COMP_OPERATOR, '>', node_oper) and self.expression(node_right) and self.end(1)) or self.reset(start)) or
+            ((self.arit_expr(node_left) and self.terminator(TokenType.COMP_OPERATOR, '<', node_oper) and self.expression(node_right) and self.end(2)) or self.reset(start)) or
+            ((self.arit_expr(node_left) and self.terminator(TokenType.COMP_OPERATOR, '==', node_oper) and self.expression(node_right) and self.end(3)) or self.reset(start)) or
+            ((self.arit_expr(node_left) and self.terminator(TokenType.COMP_OPERATOR, '!=', node_oper) and self.expression(node_right) and self.end(4)) or self.reset(start)) or
+            ((self.arit_expr(node_left) and self.terminator(TokenType.COMP_OPERATOR, '>=', node_oper) and self.expression(node_right) and self.end(5)) or self.reset(start)) or
+            ((self.arit_expr(node_left) and self.terminator(TokenType.COMP_OPERATOR, '<=', node_oper) and self.expression(node_right) and self.end(6)) or self.reset(start)) or
+            ((self.arit_expr(node_left) and self.end(7)) or self.reset(start))
+        )
+        if result:
+            if self.prod == 7:
+                parent.copy(node_left)
+            else:
+                node_oper.clear_children()
+                node_oper.add_child(node_left)
+                node_oper.add_child(node_right)
+                parent.clear_children()
+                parent.add_child(node_oper)
+        return result
+
+    def arit_expr(self, parent: Node) -> bool:
+        start = self.pos
+        node_left = self.create_node(Token(TokenType.NONE, 'LEFT', start))
+        node_oper = self.create_node(Token(TokenType.NONE, 'OPER', start), resolvers[ResolverType.OPERATOR])
+        node_right = self.create_node(Token(TokenType.NONE, 'RIGHT', start))
+        result = (
+            ((self.term(node_left) and self.terminator(TokenType.ARIT_OPERATOR, '+', node_oper) and self.arit_expr(node_right) and self.end(1)) or self.reset(start)) or
+            ((self.term(node_left) and self.terminator(TokenType.ARIT_OPERATOR, '-', node_oper) and self.arit_expr(node_right) and self.end(2)) or self.reset(start)) or
             ((self.term(node_left) and self.end(3)) or self.reset(start))
         )
         if result:
             if self.prod == 3:
                 parent.copy(node_left)
             else:    
-                # link operator with operations
                 node_oper.clear_children()
                 node_oper.add_child(node_left)
                 node_oper.add_child(node_right)
@@ -106,11 +173,9 @@ class Parser:
             if self.prod == 3:
                 parent.copy(node_left)
             else:    
-                # link operator with operations
                 node_oper.clear_children()
                 node_oper.add_child(node_left)
                 node_oper.add_child(node_right)
-                # link parent with operator
                 parent.clear_children()
                 parent.add_child(node_oper)
         return result
@@ -142,7 +207,6 @@ class Parser:
             if self.prod == 2:
                 parent.copy(node_left)
             else:    
-                # link operator with operations
                 if node_right.token.value == 'RIGHT':
                     node_left.add_child(node_right.children[0])
                 else:
@@ -153,8 +217,8 @@ class Parser:
     def identifier(self, parent: Node) -> bool:
         start = self.pos
         return (
-            ((self.function(parent) and self.end(1)) or self.reset(start)) or
-            ((self.property(parent) and self.end(2)) or self.reset(start))
+            ((self.function(parent)) or self.reset(start)) or
+            ((self.property(parent)) or self.reset(start))
         )
     
     def function(self, parent: Node) -> bool:
