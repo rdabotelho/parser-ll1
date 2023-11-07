@@ -40,7 +40,8 @@ AVAILABLE_METHODS = {
     "upper": 0, 
     "lower": 0, 
     "equals": 1,
-    "concate": 1
+    "concate": 1,
+    "mask": 1
 }
 
 class MethodResolver(Resolver):
@@ -65,7 +66,21 @@ class MethodResolver(Resolver):
             result = object == node.evalParam(0)
         elif node.token.value == 'concate':
             result = f'{object}{node.evalParam(0)}'
+        elif node.token.value == 'mask':
+            result = self.mask(object, node.evalParam(0))
         return node.evalChildren(result)
+
+    def mask(self, input, pattern):
+        result = ''
+        input_index = 0
+        for char in pattern:
+            if char == '#':
+                result += input[input_index]
+                input_index += 1
+            else:
+                result += char
+
+        return result
 
 class LiteralResolver(Resolver):
     type = ResolverType.LITERAL
@@ -98,7 +113,10 @@ class OperatorResolver(Resolver):
     def eval(self, node: Node, object: any) -> any:
         oper = node.token.value
         left = node.children[0].eval(object)
-        right = node.children[1].eval(object)
+        if len(node.children) > 1:
+            right = node.children[1].eval(object)
+        else:
+            right = None
         result = 0
         if oper == '+':
             result = left + right
@@ -120,6 +138,12 @@ class OperatorResolver(Resolver):
             return left >= right
         elif oper == '<=':
             return left <= right
+        elif oper == 'and':
+            return left and right
+        elif oper == 'or':
+            return left or right
+        elif oper == 'not':
+            return not left
         if (self.has_decimal(result)):
             return result
         else:
