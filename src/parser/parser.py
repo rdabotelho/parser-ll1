@@ -55,9 +55,14 @@ class Parser:
         term_row = self.table[0]
         if term.type == self.none_type:
             value = '$'
+            type = None
         else:
-            value = term.type.name
-        col = term_row.index(value)
+            type = term.type.name
+            value = term.value
+        if value in term_row:
+            col = term_row.index(value)
+        else:
+            col = term_row.index(type)
         if not (col > 0):
             return []
         for row in self.table:

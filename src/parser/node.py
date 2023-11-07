@@ -31,6 +31,12 @@ class Node:
         else:
             return self.parent.get_root()
         
+    def get_node(self, value: str) -> any:
+        nodes = self.get_nodes(value)
+        if len(nodes) > 0:
+            return nodes[0]
+        return None
+
     def get_nodes(self, value: str) -> any:
         result = []
         if self.value == value:
@@ -48,7 +54,13 @@ class Node:
         return is_term(self.value)
         
     def match(self, token: Token) -> bool:
-        return self.is_terminal() and self.value == token.type.name
+        return self.is_terminal() and (self.value == token.value or self.value == token.type.name)
+    
+    def print_children(self):
+        s = f'{self.value} -> '
+        for child in self.children:
+            s += f'{child.value} '
+        print(s)
 
     def __str__(self):
         return f"Node(value='{self.value}', token={self.token})"   

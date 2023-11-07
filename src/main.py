@@ -1,4 +1,5 @@
 import sys
+import os
 from enum import Enum
 from parser.ll1_utils import *
 from scanner.scanner import Scanner
@@ -32,7 +33,7 @@ class GramGenerator:
         text = 'from enum import Enum\n'
         text += 'from parser.ll1_utils import *\n'
         text += 'from scanner.scanner import Scanner\n'
-        text += 'from parser.parser import Parser\n\n'
+        text += 'from parser.parser import Parser, Node\n\n'
         text += 'class TokenType(Enum):\n'
         text += '    NONE = 0\n'
         text += '    BREAK = 1\n'
@@ -48,7 +49,7 @@ class GramGenerator:
         text += "    def __init__(self, parser: Parser):\n"
         text += "        self.parser = parser\n\n"
         text += "    def generate(self):\n"
-        text += "        return None\n\n"
+        text += "        self.parser.print_nodes()\n\n"
         text += f'{self.content}\n\n'
         text += "def syntactic_table_generate(gram: dict):\n"
         text += "    nterms = get_nterms(gram)\n"
@@ -76,7 +77,7 @@ class GramGenerator:
         text += '    # execute one time this code, after copy the code generated and reclace the method syntactic_table_generate with the content"\n'
         text += '    # to finish, remove this code and uncomment the others"\n'
         text += '    syntactic_table_generate(gram)\n'
-        text += '    #source = ""\n'
+        text += '    #source = input("Logical expression: ")\n'
         text += '    #scanner = Scanner(token_regex, TokenType.SPACE)\n'
         text += '    #tokens = scanner.scan(source)\n'
         text += '    #parser = Parser(table, TokenType.NONE)\n'
@@ -169,4 +170,10 @@ if __name__ == "__main__":
 
     generator = GramGenerator(parser)
     generator.generate()
-    generator.save('logical_main.py')
+
+    file_name = f'{os.path.basename(gram_file)}'
+    file_name = os.path.splitext(file_name)[0]
+    file_name = f'{file_name}_main.py'
+    generator.save(file_name)
+
+    print(f'File {file_name} created with success!')

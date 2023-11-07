@@ -1,5 +1,0 @@
-<expr>   -> <term> <expr2>
-<expr2>  -> or <term> <expr2> | ε
-<term>   -> <factor> <term2>
-<term2>  -> and <factor> <term2> | ε
-<factor> -> not <factor> | id | true | false | ( <expr> )
