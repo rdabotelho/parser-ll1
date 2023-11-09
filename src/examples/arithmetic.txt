@@ -1,0 +1,5 @@
+<expr>   -> <term> <expr2>
+<expr2>  -> + <term> <expr2> | - <term> <expr2> | ε
+<term>   -> <factor> <term2>
+<term2>  -> * <factor> <term2> | / <factor> <term2> | ε
+<factor> -> NUM |  ( <expr> )

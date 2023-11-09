@@ -4,7 +4,8 @@ This generator has the objective to facilitate the creation of an LL(1) parser, 
 In addition to generating these artifacts, we also provide the scanner algorithm for lexical analysis and the LL(1) parser algorithm for top-down syntactic analysis.
 We also provide some example files with LL(1) context-free grammars in the examples folder:
 
-- expression.txt: Example grammar for arithmetic expression
+- arithmetic.txt: Example grammar for arithmetic expression
+- comparation.txt: Example grammar for comparation expression
 - list.txt: Example grammar for a comma separated list
 
 See a step-by-step guide on how to generate it

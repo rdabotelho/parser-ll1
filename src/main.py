@@ -77,7 +77,7 @@ class GramGenerator:
         text += '    # execute one time this code, after copy the code generated and reclace the method syntactic_table_generate with the content"\n'
         text += '    # to finish, remove this code and uncomment the others"\n'
         text += '    syntactic_table_generate(gram)\n'
-        text += '    #source = input("Logical expression: ")\n'
+        text += '    #source = input("source: ")\n'
         text += '    #scanner = Scanner(token_regex, TokenType.SPACE)\n'
         text += '    #tokens = scanner.scan(source)\n'
         text += '    #parser = Parser(table, TokenType.NONE)\n'
