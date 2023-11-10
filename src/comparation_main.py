@@ -61,6 +61,7 @@ table: list = [
 ]
 
 if __name__ == "__main__":
+    print((3 > 2 > 1) > 1)
     source = input("source: ")
     scanner = Scanner(token_regex, TokenType.SPACE)
     tokens = scanner.scan(source)

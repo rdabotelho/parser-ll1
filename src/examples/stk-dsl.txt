@@ -1,0 +1,22 @@
+<expr>          -> <expr_logic>
+
+<expr_logic>    -> <term_logic> <expr_logic2>
+<expr_logic2>   -> or <term_logic> <expr_logic2> | ε
+<term_logic>    -> <factor_logic> <term_logic2>
+<term_logic2>   -> and <factor_logic> <term_logic2> | ε
+<factor_logic>  -> not <factor_logic> | <expr_comp>
+<expr_comp>     -> <expr_arith> <expr_comp2>
+<expr_comp2>    -> OPERATOR_COMP <expr_arith> <expr_comp2> | ε
+<expr_arith>    -> <term_arith> <expr_arith2>
+<expr_arith2>   -> + <term_arith> <expr_arith2> | - <term_arith> <expr_arith2> | ε
+<term_arith>    -> <term> <term_arith2>
+<term_arith2>   -> * <term> <term_arith2> | / <term> <term_arith2> | ε
+<term>          -> <variable> | <literal> | ( <expr> )
+<variable>      -> <identifier> <variable2>
+<variable2>     -> . <identifier> <variable2> | ε
+<identifier>    -> <prop_func> <identifier2>
+<identifier2>   -> ( <parameters> ) | ε
+<parameters>    -> <expr> <parameters2>
+<parameters2>   -> , <expr> <parameters2> | ε
+<prop_func>     -> ID
+<literal>       -> DECIMAL | INTEGER | STRING | BOOL
