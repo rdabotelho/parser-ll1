@@ -2,6 +2,8 @@ from enum import Enum
 from parser.ll1_utils import *
 from scanner.scanner import Scanner
 from parser.parser import Parser, Node
+from commons.exceptions import SemanticException
+import inspect
 
 class TokenType(Enum):
     NONE = 0,
@@ -29,12 +31,21 @@ token_regex = {
     TokenType.SPACE: r'^\s'
 }
 
+class Functions:
+
+    def upper(self, object: any) -> str:
+        return object.upper()
+    
+    def concate(self, object: any, value: str) -> str:
+        return f'{object}{value}'
+
 class PropFunc:
 
     def __init__(self, name: str, params: list = None):
         self.name = name
         self.params = params
         self.value = None
+        self.functions = Functions()
 
     def is_property(self) -> bool:
         return self.params == None
@@ -42,15 +53,35 @@ class PropFunc:
     def is_function(self) -> bool:
         return not self.is_property() 
 
-    def calc(self, next: any = None) -> any:
-        return None
+    def calc(self, context: any) -> any:
+        if self.is_function():
+            return self.calc_function(context)
+        return self.calc_property(context)
+    
+    def calc_property(self, conext: any) -> any:
+        if not hasattr(conext, self.name):
+            raise SemanticException(f'Property "{self.name}" not found')
+        return getattr(conext, self.name)
+    
+    def calc_function(self, context: any) -> any:
+        if not hasattr(self.functions, self.name):
+            raise SemanticException(f'Function "{self.name}" not found')
+        method = getattr(self.functions, self.name)
+        parameters = inspect.signature(method).parameters
+        params_count = len(parameters)
+        if (len(self.params) + 1) != params_count:
+            raise SemanticException(f'Method "{self.name}" must have {params_count} argument(s)')
+        params_values = [context]
+        params_values.extend(self.params)
+        return method(*params_values)
 
-class CodeGenerator:
+class CodeEvaluator:
 
     def __init__(self, parser: Parser):
         self.parser = parser
 
-    def generate(self):
+    def eval(self, context: any):
+        self.context = context
         tree = self.parser.get_tree()
         result = self.expr(tree.get_node('<expr>'))
         print(result)
@@ -154,22 +185,20 @@ class CodeGenerator:
                 return self.variable(tp)
 
     def variable(self, node: Node) -> any:
-        prior = self.identifier(node.get_child(1))
-        next = self.variable2(prior, node.get_child(0))
-        if next == None:
-            return prior.calc()
-        return next.calc(prior)
+        prop_func = self.identifier(node.get_child(1))
+        result = prop_func.calc(self.context)
+        return self.variable2(result, node.get_child(0))
     
-    def variable2(self, prior: PropFunc, node: Node) -> PropFunc:
+    def variable2(self, context: any, node: Node) -> PropFunc:
         if len(node.children) > 1:
-            next = self.identifier(node.get_child(1))
-            next.calc(prior)
-            return self.variable2(next, node.get_child(0))
-        return prior
+            prop_func = self.identifier(node.get_child(1))
+            result = prop_func.calc(context)
+            return self.variable2(result, node.get_child(0))
+        return context
 
     def identifier(self, node: Node) -> PropFunc:
         name = self.prop_func(node.get_child(1))
-        params = self.parameters(node.get_child(0))
+        params = self.identifier2(node.get_child(0))
         if params == None:
             return PropFunc(name)
         else:
@@ -182,9 +211,11 @@ class CodeGenerator:
 
     def parameters(self, node: Node) -> list:
         params = []
-        param = self.expr(node.get_child(1))
-        params.append(param)
-        self.parameters2(params, node.get_child(0))
+        if len(node.children) > 1:            
+            param = self.expr(node.get_child(1))
+            params.append(param)
+            self.parameters2(params, node.get_child(0))
+            return params
         return params
     
     def parameters2(self, params: list, node: Node) -> None:
@@ -195,7 +226,7 @@ class CodeGenerator:
         return None       
 
     def prop_func(self, node: Node) -> str:
-        return node.get_child(0).token_value
+        return node.get_child(0).token.value
 
     def literal(self, node: Node) -> any:
         tp = node.get_child(0)
@@ -241,17 +272,21 @@ table: list = [
     ['<variable2>', ['ε'], ['ε'], [], ['ε'], ['ε'], ['ε'], ['ε'], ['ε'], [], ['ε'], ['.', '<identifier>', '<variable2>'], ['ε'], [], [], [], [], [], ['ε']],
     ['<identifier>', [], [], [], [], [], [], [], [], [], [], [], [], ['<prop_func>', '<identifier2>'], [], [], [], [], []],
     ['<identifier2>', ['ε'], ['ε'], [], ['ε'], ['ε'], ['ε'], ['ε'], ['ε'], ['(', '<parameters>', ')'], ['ε'], ['ε'], ['ε'], [], [], [], [], [], ['ε']],
-    ['<parameters>', [], [], ['<expr>', '<parameters2>'], [], [], [], [], [], ['<expr>', '<parameters2>'], [], [], [], ['<expr>', '<parameters2>'], ['<expr>', '<parameters2>'], ['<expr>', '<parameters2>'], ['<expr>', '<parameters2>'], ['<expr>', '<parameters2>'], []],
+    ['<parameters>', [], [], ['<expr>', '<parameters2>'], [], [], [], [], [], ['<expr>', '<parameters2>'], ['ε'], [], [], ['<expr>', '<parameters2>'], ['<expr>', '<parameters2>'], ['<expr>', '<parameters2>'], ['<expr>', '<parameters2>'], ['<expr>', '<parameters2>'], []],
     ['<parameters2>', [], [], [], [], [], [], [], [], [], ['ε'], [], [',', '<expr>', '<parameters2>'], [], [], [], [], [], []],
     ['<prop_func>', [], [], [], [], [], [], [], [], [], [], [], [], ['ID'], [], [], [], [], []],
     ['<literal>', [], [], [], [], [], [], [], [], [], [], [], [], [], ['DECIMAL'], ['INTEGER'], ['STRING'], ['BOOL'], []]
 ]
 
-if __name__ == "__main__":
-    source = input("source: ")
-    scanner = Scanner(token_regex, TokenType.SPACE)
-    tokens = scanner.scan(source)
-    parser = Parser(table, TokenType.NONE)
-    parser.parse(tokens)
-    generator = CodeGenerator(parser)
-    generator.generate()
+class StkDsl:
+
+    def __init__(self, context: any):
+        self.context = context
+
+    def eval(self, source: str) -> any:
+        scanner = Scanner(token_regex, TokenType.SPACE)
+        tokens = scanner.scan(source)
+        parser = Parser(table, TokenType.NONE)
+        parser.parse(tokens)
+        evaluator = CodeEvaluator(parser)
+        evaluator.eval(self.context)

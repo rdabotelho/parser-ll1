@@ -1,0 +1,4 @@
+src/__pycache__
+src/commons/__pycache__
+src/parser/__pycache__
+src/scanner/__pycache__
