@@ -10,12 +10,12 @@
 <expr_arith2>   -> + <term_arith> <expr_arith2> | - <term_arith> <expr_arith2> | ε
 <term_arith>    -> <term> <term_arith2>
 <term_arith2>   -> * <term> <term_arith2> | / <term> <term_arith2> | ε
-<term>          -> <variable> | <literal> | ( <expr> )
-<variable>      -> <identifier> <variable2>
-<variable2>     -> . <identifier> <variable2> | ε
-<identifier>    -> <prop_func> <identifier2>
-<identifier2>   -> ( <parameters> ) | ε
+<term>          -> <object> | <literal>
+<object>        -> <variable> <object2> | STRING <object2> | ( <expr> ) <object2>
+<object2>       -> . <variable> <object2> | ε
+<variable>      -> <prop_func> <variable2>
+<variable2>     -> ( <parameters> ) | ε
 <parameters>    -> <expr> <parameters2> | ε
 <parameters2>   -> , <expr> <parameters2> | ε
 <prop_func>     -> ID
-<literal>       -> DECIMAL | INTEGER | STRING | BOOL
+<literal>       -> DECIMAL | INTEGER | BOOL

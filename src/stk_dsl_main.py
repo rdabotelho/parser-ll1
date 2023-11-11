@@ -38,6 +38,21 @@ class Functions:
     
     def concate(self, object: any, value: str) -> str:
         return f'{object}{value}'
+    
+    def replace(self, object: any, old: str, new: str) -> str:
+        return object.replace(old, new)
+
+    def mask(self, input, pattern):
+        result = ''
+        input_index = 0
+        for char in pattern:
+            if char == '#':
+                result += input[input_index]
+                input_index += 1
+            else:
+                result += char
+
+        return result
 
 class PropFunc:
 
@@ -113,9 +128,8 @@ class CodeEvaluator:
 
     def factor_logic(self, node: Node) -> any:
         if len(node.children) > 1:  
-            next = self.factor_logic(node.get_child(1))
-            result = not next
-            return self.expr_comp(result, node.get_child(0))                
+            next = self.factor_logic(node.get_child(0))
+            return not next
         return self.expr_comp(node.get_child(0))
 
     def expr_comp(self, node: Node) -> bool:
@@ -175,36 +189,41 @@ class CodeEvaluator:
         return prior
 
     def term(self, node: Node) -> any:
-        if len(node.children) > 1:
-            return self.expr(node.get_child(1))
+        tp = node.get_child(0)
+        if tp.value == '<literal>':
+            return self.literal(tp)
         else:
-            tp = node.get_child(0)
-            if tp.value == '<literal>':
-                return self.literal(tp)
-            else:
-                return self.variable(tp)
+            return self._object(tp)
 
-    def variable(self, node: Node) -> any:
-        prop_func = self.identifier(node.get_child(1))
-        result = prop_func.calc(self.context)
-        return self.variable2(result, node.get_child(0))
+    def _object(self, node: Node) -> any:
+        result = None
+        if len(node.children) == 4:
+            result = self.expr(node.get_child(2))
+        else:
+            node1 = node.get_child(1)
+            if node1.value == 'STRING':
+                result = self.string(node1.token.value)
+            else:
+                prop_func = self.variable(node1)
+                result = prop_func.calc(self.context)
+        return self.object2(result, node.get_child(0))
     
-    def variable2(self, context: any, node: Node) -> PropFunc:
+    def object2(self, context: any, node: Node) -> PropFunc:
         if len(node.children) > 1:
-            prop_func = self.identifier(node.get_child(1))
+            prop_func = self.variable(node.get_child(1))
             result = prop_func.calc(context)
-            return self.variable2(result, node.get_child(0))
+            return self.object2(result, node.get_child(0))
         return context
 
-    def identifier(self, node: Node) -> PropFunc:
+    def variable(self, node: Node) -> PropFunc:
         name = self.prop_func(node.get_child(1))
-        params = self.identifier2(node.get_child(0))
+        params = self.variable2(node.get_child(0))
         if params == None:
             return PropFunc(name)
         else:
             return PropFunc(name, params)
     
-    def identifier2(self, node: Node) -> any:
+    def variable2(self, node: Node) -> any:
         if len(node.children) > 1:
             return self.parameters(node.get_child(1))
         return None
@@ -236,8 +255,6 @@ class CodeEvaluator:
             return self.decimal(value)
         elif name == 'INTEGER':
             return self.integer(value)
-        elif name == 'STRING':
-            return self.string(value)
         else:
             return self.bool(value)
     
@@ -254,28 +271,28 @@ class CodeEvaluator:
         return value == 'true'
 
 table: list = [
-    ['', 'or', 'and', 'not', 'OPERATOR_COMP', '+', '-', '*', '/', '(', ')', '.', ',', 'ID', 'DECIMAL', 'INTEGER', 'STRING', 'BOOL', '$'],
-    ['<expr>', [], [], ['<expr_logic>'], [], [], [], [], [], ['<expr_logic>'], [], [], [], ['<expr_logic>'], ['<expr_logic>'], ['<expr_logic>'], ['<expr_logic>'], ['<expr_logic>'], []],
-    ['<expr_logic>', [], [], ['<term_logic>', '<expr_logic2>'], [], [], [], [], [], ['<term_logic>', '<expr_logic2>'], [], [], [], ['<term_logic>', '<expr_logic2>'], ['<term_logic>', '<expr_logic2>'], ['<term_logic>', '<expr_logic2>'], ['<term_logic>', '<expr_logic2>'], ['<term_logic>', '<expr_logic2>'], []],
-    ['<expr_logic2>', ['or', '<term_logic>', '<expr_logic2>'], [], [], [], [], [], [], [], [], ['ε'], [], ['ε'], [], [], [], [], [], ['ε']],
-    ['<term_logic>', [], [], ['<factor_logic>', '<term_logic2>'], [], [], [], [], [], ['<factor_logic>', '<term_logic2>'], [], [], [], ['<factor_logic>', '<term_logic2>'], ['<factor_logic>', '<term_logic2>'], ['<factor_logic>', '<term_logic2>'], ['<factor_logic>', '<term_logic2>'], ['<factor_logic>', '<term_logic2>'], []],
-    ['<term_logic2>', ['ε'], ['and', '<factor_logic>', '<term_logic2>'], [], [], [], [], [], [], [], ['ε'], [], ['ε'], [], [], [], [], [], ['ε']],
-    ['<factor_logic>', [], [], ['not', '<factor_logic>'], [], [], [], [], [], ['<expr_comp>'], [], [], [], ['<expr_comp>'], ['<expr_comp>'], ['<expr_comp>'], ['<expr_comp>'], ['<expr_comp>'], []],
-    ['<expr_comp>', [], [], [], [], [], [], [], [], ['<expr_arith>', '<expr_comp2>'], [], [], [], ['<expr_arith>', '<expr_comp2>'], ['<expr_arith>', '<expr_comp2>'], ['<expr_arith>', '<expr_comp2>'], ['<expr_arith>', '<expr_comp2>'], ['<expr_arith>', '<expr_comp2>'], []],
-    ['<expr_comp2>', ['ε'], ['ε'], [], ['OPERATOR_COMP', '<expr_arith>', '<expr_comp2>'], [], [], [], [], [], ['ε'], [], ['ε'], [], [], [], [], [], ['ε']],
-    ['<expr_arith>', [], [], [], [], [], [], [], [], ['<term_arith>', '<expr_arith2>'], [], [], [], ['<term_arith>', '<expr_arith2>'], ['<term_arith>', '<expr_arith2>'], ['<term_arith>', '<expr_arith2>'], ['<term_arith>', '<expr_arith2>'], ['<term_arith>', '<expr_arith2>'], []],
-    ['<expr_arith2>', ['ε'], ['ε'], [], ['ε'], ['+', '<term_arith>', '<expr_arith2>'], ['-', '<term_arith>', '<expr_arith2>'], [], [], [], ['ε'], [], ['ε'], [], [], [], [], [], ['ε']],
-    ['<term_arith>', [], [], [], [], [], [], [], [], ['<term>', '<term_arith2>'], [], [], [], ['<term>', '<term_arith2>'], ['<term>', '<term_arith2>'], ['<term>', '<term_arith2>'], ['<term>', '<term_arith2>'], ['<term>', '<term_arith2>'], []],
-    ['<term_arith2>', ['ε'], ['ε'], [], ['ε'], ['ε'], ['ε'], ['*', '<term>', '<term_arith2>'], ['/', '<term>', '<term_arith2>'], [], ['ε'], [], ['ε'], [], [], [], [], [], ['ε']],
-    ['<term>', [], [], [], [], [], [], [], [], ['(', '<expr>', ')'], [], [], [], ['<variable>'], ['<literal>'], ['<literal>'], ['<literal>'], ['<literal>'], []],
-    ['<variable>', [], [], [], [], [], [], [], [], [], [], [], [], ['<identifier>', '<variable2>'], [], [], [], [], []],
-    ['<variable2>', ['ε'], ['ε'], [], ['ε'], ['ε'], ['ε'], ['ε'], ['ε'], [], ['ε'], ['.', '<identifier>', '<variable2>'], ['ε'], [], [], [], [], [], ['ε']],
-    ['<identifier>', [], [], [], [], [], [], [], [], [], [], [], [], ['<prop_func>', '<identifier2>'], [], [], [], [], []],
-    ['<identifier2>', ['ε'], ['ε'], [], ['ε'], ['ε'], ['ε'], ['ε'], ['ε'], ['(', '<parameters>', ')'], ['ε'], ['ε'], ['ε'], [], [], [], [], [], ['ε']],
-    ['<parameters>', [], [], ['<expr>', '<parameters2>'], [], [], [], [], [], ['<expr>', '<parameters2>'], ['ε'], [], [], ['<expr>', '<parameters2>'], ['<expr>', '<parameters2>'], ['<expr>', '<parameters2>'], ['<expr>', '<parameters2>'], ['<expr>', '<parameters2>'], []],
-    ['<parameters2>', [], [], [], [], [], [], [], [], [], ['ε'], [], [',', '<expr>', '<parameters2>'], [], [], [], [], [], []],
-    ['<prop_func>', [], [], [], [], [], [], [], [], [], [], [], [], ['ID'], [], [], [], [], []],
-    ['<literal>', [], [], [], [], [], [], [], [], [], [], [], [], [], ['DECIMAL'], ['INTEGER'], ['STRING'], ['BOOL'], []]
+    ['', 'or', 'and', 'not', 'OPERATOR_COMP', '+', '-', '*', '/', 'STRING', '(', ')', '.', ',', 'ID', 'DECIMAL', 'INTEGER', 'BOOL', '$'],
+    ['<expr>', [], [], ['<expr_logic>'], [], [], [], [], [], ['<expr_logic>'], ['<expr_logic>'], [], [], [], ['<expr_logic>'], ['<expr_logic>'], ['<expr_logic>'], ['<expr_logic>'], []],
+    ['<expr_logic>', [], [], ['<term_logic>', '<expr_logic2>'], [], [], [], [], [], ['<term_logic>', '<expr_logic2>'], ['<term_logic>', '<expr_logic2>'], [], [], [], ['<term_logic>', '<expr_logic2>'], ['<term_logic>', '<expr_logic2>'], ['<term_logic>', '<expr_logic2>'], ['<term_logic>', '<expr_logic2>'], []],
+    ['<expr_logic2>', ['or', '<term_logic>', '<expr_logic2>'], [], [], [], [], [], [], [], [], [], ['ε'], [], ['ε'], [], [], [], [], ['ε']],
+    ['<term_logic>', [], [], ['<factor_logic>', '<term_logic2>'], [], [], [], [], [], ['<factor_logic>', '<term_logic2>'], ['<factor_logic>', '<term_logic2>'], [], [], [], ['<factor_logic>', '<term_logic2>'], ['<factor_logic>', '<term_logic2>'], ['<factor_logic>', '<term_logic2>'], ['<factor_logic>', '<term_logic2>'], []],
+    ['<term_logic2>', ['ε'], ['and', '<factor_logic>', '<term_logic2>'], [], [], [], [], [], [], [], [], ['ε'], [], ['ε'], [], [], [], [], ['ε']],
+    ['<factor_logic>', [], [], ['not', '<factor_logic>'], [], [], [], [], [], ['<expr_comp>'], ['<expr_comp>'], [], [], [], ['<expr_comp>'], ['<expr_comp>'], ['<expr_comp>'], ['<expr_comp>'], []],
+    ['<expr_comp>', [], [], [], [], [], [], [], [], ['<expr_arith>', '<expr_comp2>'], ['<expr_arith>', '<expr_comp2>'], [], [], [], ['<expr_arith>', '<expr_comp2>'], ['<expr_arith>', '<expr_comp2>'], ['<expr_arith>', '<expr_comp2>'], ['<expr_arith>', '<expr_comp2>'], []],
+    ['<expr_comp2>', ['ε'], ['ε'], [], ['OPERATOR_COMP', '<expr_arith>', '<expr_comp2>'], [], [], [], [], [], [], ['ε'], [], ['ε'], [], [], [], [], ['ε']],
+    ['<expr_arith>', [], [], [], [], [], [], [], [], ['<term_arith>', '<expr_arith2>'], ['<term_arith>', '<expr_arith2>'], [], [], [], ['<term_arith>', '<expr_arith2>'], ['<term_arith>', '<expr_arith2>'], ['<term_arith>', '<expr_arith2>'], ['<term_arith>', '<expr_arith2>'], []],
+    ['<expr_arith2>', ['ε'], ['ε'], [], ['ε'], ['+', '<term_arith>', '<expr_arith2>'], ['-', '<term_arith>', '<expr_arith2>'], [], [], [], [], ['ε'], [], ['ε'], [], [], [], [], ['ε']],
+    ['<term_arith>', [], [], [], [], [], [], [], [], ['<term>', '<term_arith2>'], ['<term>', '<term_arith2>'], [], [], [], ['<term>', '<term_arith2>'], ['<term>', '<term_arith2>'], ['<term>', '<term_arith2>'], ['<term>', '<term_arith2>'], []],
+    ['<term_arith2>', ['ε'], ['ε'], [], ['ε'], ['ε'], ['ε'], ['*', '<term>', '<term_arith2>'], ['/', '<term>', '<term_arith2>'], [], [], ['ε'], [], ['ε'], [], [], [], [], ['ε']],
+    ['<term>', [], [], [], [], [], [], [], [], ['<object>'], ['<object>'], [], [], [], ['<object>'], ['<literal>'], ['<literal>'], ['<literal>'], []],
+    ['<object>', [], [], [], [], [], [], [], [], ['STRING', '<object2>'], ['(', '<expr>', ')', '<object2>'], [], [], [], ['<variable>', '<object2>'], [], [], [], []],
+    ['<object2>', ['ε'], ['ε'], [], ['ε'], ['ε'], ['ε'], ['ε'], ['ε'], [], [], ['ε'], ['.', '<variable>', '<object2>'], ['ε'], [], [], [], [], ['ε']],
+    ['<variable>', [], [], [], [], [], [], [], [], [], [], [], [], [], ['<prop_func>', '<variable2>'], [], [], [], []],
+    ['<variable2>', ['ε'], ['ε'], [], ['ε'], ['ε'], ['ε'], ['ε'], ['ε'], [], ['(', '<parameters>', ')'], ['ε'], ['ε'], ['ε'], [], [], [], [], ['ε']],
+    ['<parameters>', [], [], ['<expr>', '<parameters2>'], [], [], [], [], [], ['<expr>', '<parameters2>'], ['<expr>', '<parameters2>'], ['ε'], [], [], ['<expr>', '<parameters2>'], ['<expr>', '<parameters2>'], ['<expr>', '<parameters2>'], ['<expr>', '<parameters2>'], []],
+    ['<parameters2>', [], [], [], [], [], [], [], [], [], [], ['ε'], [], [',', '<expr>', '<parameters2>'], [], [], [], [], []],
+    ['<prop_func>', [], [], [], [], [], [], [], [], [], [], [], [], [], ['ID'], [], [], [], []],
+    ['<literal>', [], [], [], [], [], [], [], [], [], [], [], [], [], [], ['DECIMAL'], ['INTEGER'], ['BOOL'], []]
 ]
 
 class StkDsl:
